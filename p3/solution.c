@@ -1,104 +1,126 @@
 #include "spinlock_ece391.h"
 #include "solution.h"
 #include <bits/types.h>
+#include <stdio.h>
 
 
-void update_queue(ps_lock *ps){
-    if(ps->professors && (!ps->ta || !ps->student)){
-        ps->professors--;
-        ps->prof_occup++;
-        ps->occupancy++;
-    }
-    else if(!ps->prof_occup && ps->ta){
-        ps->ta--;
-        ps->ta_occup++;
-        ps->occupancy++;
-    }
-    else if(!ps->prof_occup && ps->student){
-        ps->student--;
-        ps->student_occup++;
-        ps->occupancy++;
-    }
-}
 
 ps_lock ps_lock_create(spinlock_t *lock) {
-  // Fill this out!!!
-    spinlock_init_ece391(lock);
-    ps_lock a = {
-        .spinlock = lock,
-        .occupancy = 0,
-        .student = 0,
-        .ta = 0,
-        .professors = 0,
-        .student_occup = 0,
-        .ta_occup = 0,
-        .prof_occup = 0
-    };
+
+    ps_lock a;
+	a.init = 0;
+	spinlock_init_ece391(lock);
+	a.init = 1;
+	a.students = 0;
+	a.professors = 0;
+	a.tas = 0;
+    a.professorsQueue = 0;
+	a.tasQueue = 0;
     return a;
 }
 
 void professor_enter(ps_lock *ps) {
-  // Fill this out!!!
-    spinlock_lock_ece391(ps->spinlock);
-    if(ps->student_occup || ps->ta_occup || ps->occupancy >= 20){
-        ps->professors++;
-    }
-    else {
-        ps->prof_occup++;
-        ps->occupancy++;
-    }
-    spinlock_unlock_ece391(ps->spinlock);
+	int queued = 0;
+	while(1){
+		if(ps->init){
+			spinlock_lock_ece391(ps->spinlock);
+			//printf("%d",ps->students);
+			if(ps->students==0 && ps->tas==0 || ps->occupancy < 20){
+				ps->professors +=1;
+				ps->occupancy +=1;
+				if(queued){
+					ps->professorsQueue-=1;
+				}
+				spinlock_unlock_ece391(ps->spinlock);	
+				break;
+			}else if(!queued){
+				ps->professorsQueue +=1;
+				queued = 1;
+				spinlock_unlock_ece391(ps->spinlock);	
+			}else{
+				spinlock_unlock_ece391(ps->spinlock);	
+			}
+
+		}
+	}
 }
 
 void professor_exit(ps_lock *ps) {
-  // Fill this out!!!
-    spinlock_lock_ece391(ps->spinlock);
-    ps->prof_occup--;
-    ps->occupancy--;
-    update_queue(ps);
-    spinlock_unlock_ece391(ps->spinlock);
+	while(1){
+		if(ps->init){
+			spinlock_lock_ece391(ps->spinlock);
+			ps->professors-=1;
+			ps->occupancy -=1;
+			spinlock_unlock_ece391(ps->spinlock);
+			break;
+		}
+	}
+	
 }
 
 void ta_enter(ps_lock *ps) {
-  // Fill this out!!!
-    spinlock_lock_ece391(ps->spinlock);
-    if(ps->prof_occup || ps->occupancy >= 20){
-        ps->ta++;
-    }
-    else {
-        ps->ta_occup++;
-        ps->occupancy++;
-    }
-    spinlock_unlock_ece391(ps->spinlock);
+	int queued = 0;
+	while(1){
+		if(ps->init){
+			spinlock_lock_ece391(ps->spinlock);
+			if(ps->professors==0 && ps->occupancy < 20 && !ps->professorsQueue){
+				ps->tas +=1;
+				ps->occupancy +=1;
+				if(queued){
+					ps->tasQueue-=1;
+				}
+				spinlock_unlock_ece391(ps->spinlock);
+				break;
+			}else if(!queued){
+				ps->tasQueue +=1;
+				queued = 1;
+				spinlock_unlock_ece391(ps->spinlock);
+			}else{
+				spinlock_unlock_ece391(ps->spinlock);
+			}
+		}
+	}
+
 }
 
 void ta_exit(ps_lock *ps) {
-  // Fill this out!!!
-    spinlock_lock_ece391(ps->spinlock);
-    ps->ta_occup--;
-    ps->occupancy--;
-    update_queue(ps);
-    spinlock_unlock_ece391(ps->spinlock);
+	while(1){
+		if(ps->init){
+		spinlock_lock_ece391(ps->spinlock);
+		ps->tas-=1;
+		ps->occupancy -=1;
+		spinlock_unlock_ece391(ps->spinlock);	
+		break;
+		}
+	}
+	
 }
 
+
 void student_enter(ps_lock *ps) {
-  // Fill this out!!!spinlock_lock_ece391(ps->spinlock);
-    if(ps->prof_occup || ps->occupancy >= 20){
-        ps->student++;
-    }
-    else {
-        ps->student_occup++;
-        ps->occupancy++;
-    }
-    spinlock_unlock_ece391(ps->spinlock);
+	while(1){
+		if(ps->init){
+			spinlock_lock_ece391(ps->spinlock);
+			if(ps->professors==0 && ps->occupancy < 20 && ps->professorsQueue ==0 &&  ps->tasQueue==0){
+				ps->students +=1;
+				ps->occupancy +=1;
+				printf("%d",ps->students);
+				spinlock_unlock_ece391(ps->spinlock);	
+				break;
+			}else{
+				spinlock_unlock_ece391(ps->spinlock);	
+			}
+		}
+	}
 }
 
 void student_exit(ps_lock *ps) {
-  // Fill this out!!!
-    spinlock_lock_ece391(ps->spinlock);
-    ps->student_occup--;
-    ps->occupancy--;
-    update_queue(ps);
-    spinlock_unlock_ece391(ps->spinlock);
-}
 
+	if(ps->init){
+		spinlock_lock_ece391(ps->spinlock);
+		ps->students-=1;
+		ps->occupancy -=1;
+		printf("%d",ps->students);
+		spinlock_unlock_ece391(ps->spinlock);	
+	}
+}

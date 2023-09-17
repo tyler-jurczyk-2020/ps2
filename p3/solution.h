@@ -6,15 +6,13 @@
 typedef struct ps_enter_exit_lock {
   // Fill this out!!!
   spinlock_t* spinlock;
-  int occupancy;
-  int is_professor;
-  int professors;
-  int ta;
-  int student;
-  int student_occup;
-  int ta_occup;
-  int prof_occup;
-
+  volatile unsigned int professors;
+  volatile unsigned int tas;
+  volatile unsigned int students;
+  volatile unsigned int occupancy;
+  volatile unsigned int init;
+  volatile unsigned int professorsQueue;
+  volatile unsigned int tasQueue;
 } ps_lock;
 
 ps_lock ps_lock_create(spinlock_t *lock);
